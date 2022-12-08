@@ -36,7 +36,7 @@ async function run() {
 
     // Warning this is not proper way to filtering something. After you learn you use agreegate lookup
     app.get("/avaiable", async (req, res) => {
-      const date = req.body.date || "Dec 8, 2022";
+      const date = req.query.date;
 
       // Step : 1
       // Get All services
