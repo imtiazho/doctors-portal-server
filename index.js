@@ -34,6 +34,7 @@ async function run() {
       res.send(cursor);
     });
 
+    // Warning this is not proper way to filtering something. After you learn you use agreegate lookup
     app.get("/avaiable", async (req, res) => {
       const date = req.body.date || "Dec 8, 2022";
 
@@ -56,7 +57,7 @@ async function run() {
         const avaiableSlots = service.slots.filter(
           (s) => !bookedSlots.includes(s)
         );
-        service.avaiableSlots = avaiableSlots;
+        service.slots = avaiableSlots;
         // service.bookedSlots = bookedSlots;
         // service.bookedSlots = bookingService.map((s) => s.slot);
       });
