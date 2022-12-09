@@ -42,6 +42,7 @@ async function run() {
       .db("doctors_portal")
       .collection("bookings");
     const usersCollection = client.db("doctors_portal").collection("users");
+    const doctorsCollection = client.db("doctors_portal").collection("doctors");
 
     // get all users
     app.get("/allUsers", verifyJWT, async (req, res) => {
@@ -96,7 +97,9 @@ async function run() {
     // Get all Service
     app.get("/allServices", async (req, res) => {
       const query = {};
-      const allServices = doctorPortalsCollection.find(query);
+      const allServices = doctorPortalsCollection
+        .find(query)
+        .project({ name: 1 });
       const cursor = await allServices.toArray();
       res.send(cursor);
     });
@@ -169,6 +172,32 @@ async function run() {
       const user = await usersCollection.findOne({ email: email });
       const isAdmin = user?.role === "admin";
       res.send({ admin: isAdmin });
+    });
+
+    app.post("/doctor", verifyJWT, async (req, res) => {
+      const doctor = req.body;
+      const requester = req.decoded.email;
+      const requesterAccount = await usersCollection.findOne({
+        email: requester,
+      });
+      if (requesterAccount?.role === "admin") {
+        const result = await doctorsCollection.insertOne(doctor);
+        res.send(result);
+      } else {
+        return res.status(403).send({ message: "Forbidden" });
+      }
+    });
+
+    app.get("/doctors", verifyJWT, async (req, res) => {
+      const doctors = await doctorsCollection.find().toArray();
+      res.send(doctors);
+    });
+
+    app.delete("/doctors/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const result = await doctorsCollection.deleteOne(filter);
+      res.send(result);
     });
   } finally {
     // client.close();
