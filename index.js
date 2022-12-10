@@ -5,6 +5,8 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const sgTransport = require("nodemailer-sendgrid-transport");
 
 // Middleware
 app.use(cors());
@@ -16,6 +18,36 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+
+// username + password
+const emailSenderOptions = {
+  auth: {
+    api_key: process.env.EMAIL_SENDER_KEY,
+  },
+};
+var mailer = nodemailer.createTransport(sgTransport(emailSenderOptions));
+function sendAppinementEmail({ emailQ }) {
+  var email = {
+    to: "jubairhossain2001@gmail.com",
+    from: process.env.EMAIL_SENDER,
+    subject: `Your Appoinment is  is confirmed`,
+    text: `Your Appoinment is confirmed`,
+    html: `
+    <div>
+    <p>Hello</p>
+    <h3>Your appoinment for is confirmed</h3>
+    <p>Looking forward to seeing you on</p>
+    <p></p>
+    </div>
+    `,
+  };
+  mailer.sendMail(email, function (err, res) {
+    if (err) {
+      console.log(err);
+    }
+    console.log(res);
+  });
+}
 
 function verifyJWT(req, res, next) {
   const authHeaders = req.headers.authorization;
@@ -163,6 +195,8 @@ async function run() {
         return res.send({ success: false, booking: exist });
       }
       const result = await bookingCollection.insertOne(booking);
+      sendAppinementEmail(booking.patientEmail);
+      // console.log(booking);
       return res.send({ success: true, result });
     });
 
