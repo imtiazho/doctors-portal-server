@@ -1,12 +1,15 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const sgTransport = require("nodemailer-sendgrid-transport");
+const stripe = require("stripe")(
+  "sk_test_51MDbv7Gyqqc5eggDsWTFVoI921VbShYfsPHIgtNZdPI7BybrFrw1uWVemYGoLWpc2CrNg9IRxMGPEsiSzLrQNfVI00osjhnMfJ"
+);
 
 // Middleware
 app.use(cors());
@@ -48,6 +51,15 @@ function sendAppinementEmail({ emailQ }) {
     console.log(res);
   });
 }
+
+const calculateOrderAmount = (items) => {
+  // Replace this constant with a calculation of the order's amount
+  // Calculate the order total on the server to prevent
+  // people from directly manipulating the amount on the client
+  return items * 100;
+};
+
+
 
 function verifyJWT(req, res, next) {
   const authHeaders = req.headers.authorization;
@@ -200,6 +212,14 @@ async function run() {
       return res.send({ success: true, result });
     });
 
+    // Get particular booking
+    app.get("/booking/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await bookingCollection.findOne(query);
+      res.send(result);
+    });
+
     // Chekc admin
     app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
@@ -232,6 +252,40 @@ async function run() {
       const filter = { email: email };
       const result = await doctorsCollection.deleteOne(filter);
       res.send(result);
+    });
+
+    // Payment code
+    // app.post("/create-payment-intent", async (req, res) => {
+    //   const booking = req.body;
+    //   const price = booking.price;
+    //   const amount = price * 100;
+
+    //   const paymentIntent = await stripe.paymentIntents.create({
+    //     currency: "usd",
+    //     amount: amount,
+    //     payment_method_types: ["card"],
+    //   });
+    //   res.send({
+    //     clientSecret: paymentIntent.client_secret,
+    //   });
+    // });
+
+    
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { items } = req.body;
+    
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: calculateOrderAmount(items),
+        currency: "usd",
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+    
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
   } finally {
     // client.close();
